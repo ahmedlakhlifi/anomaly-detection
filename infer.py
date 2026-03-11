@@ -27,15 +27,15 @@ def overlay_mask(img: np.ndarray, mask: np.ndarray, color_bgr=(0, 255, 0)) -> np
 
 
 def parse_args():
-    p = argparse.ArgumentParser()
-    p.add_argument("--method", type=str, default="auto", choices=["auto", "patchcore", "padim"])
+    p = argparse.ArgumentParser(description="Run single-image inference with PatchCore or PaDiM.")
+    p.add_argument("--method", type=str, default="auto", choices=["auto", "patchcore", "padim"], help="Model family to load. auto = detect from checkpoint.")
 
     p.add_argument("--model-path", type=str, required=True)
     p.add_argument("--image-path", type=str, required=True)
     p.add_argument("--image-size", type=int, default=None, help="Defaults to model train size if available.")
     p.add_argument("--device", type=str, default="cpu")
-    p.add_argument("--threshold", type=float, default=None, help="Optional image-level threshold")
-    p.add_argument("--pixel-threshold", type=float, default=None, help="Optional pixel-level threshold")
+    p.add_argument("--threshold", type=float, default=None, help="Optional image-level threshold override.")
+    p.add_argument("--pixel-threshold", type=float, default=None, help="Optional pixel-level threshold override.")
     p.add_argument("--output-dir", type=str, default="outputs/infer")
     return p.parse_args()
 

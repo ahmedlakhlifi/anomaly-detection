@@ -1,0 +1,31 @@
+{
+  "num_failures": 4,
+  "num_false_positives": 3,
+  "num_false_negatives": 1,
+  "false_negative_by_defect": {
+    "thread": 1
+  },
+  "false_positive_by_defect": {
+    "good": 3
+  },
+  "lowest_score_false_negatives": [
+    {
+      "path": "C:\\Users\\PC\\Desktop\\carpet\\test\\thread\\015.png",
+      "score": 0.5884630680084229
+    }
+  ],
+  "highest_score_false_positives": [
+    {
+      "path": "C:\\Users\\PC\\Desktop\\carpet\\test\\good\\019.png",
+      "score": 0.6217055916786194
+    },
+    {
+      "path": "C:\\Users\\PC\\Desktop\\carpet\\test\\good\\014.png",
+      "score": 0.6078729629516602
+    },
+    {
+      "path": "C:\\Users\\PC\\Desktop\\carpet\\test\\good\\022.png",
+      "score": 0.6038932800292969
+    }
+  ]
+}

@@ -11,13 +11,15 @@ from src.patchcore import PatchCore
 
 
 def parse_args():
-    p = argparse.ArgumentParser()
-    p.add_argument("--method", type=str, default="patchcore", choices=["patchcore", "padim"])
+    p = argparse.ArgumentParser(
+        description="Train PatchCore or PaDiM on MVTec AD carpet using only normal training images."
+    )
+    p.add_argument("--method", type=str, default="patchcore", choices=["patchcore", "padim"], help="Model family to train.")
 
-    p.add_argument("--carpet-root", type=str, required=True)
+    p.add_argument("--carpet-root", type=str, required=True, help="Path to MVTec carpet root folder.")
     p.add_argument("--image-size", type=int, default=256)
     p.add_argument("--batch-size", type=int, default=8)
-    p.add_argument("--num-workers", type=int, default=0)  # Windows-safe
+    p.add_argument("--num-workers", type=int, default=0, help="Use 0 on Windows if dataloader issues appear.")
     p.add_argument("--device", type=str, default="cpu")
     p.add_argument("--backbone", type=str, default="resnet18", choices=["resnet18", "wide_resnet50_2"])
 
@@ -40,8 +42,8 @@ def parse_args():
     p.add_argument("--padim-cov-eps", type=float, default=0.01)
     p.add_argument("--padim-seed", type=int, default=42)
 
-    p.add_argument("--max-train-batches", type=int, default=None)
-    p.add_argument("--calibrate-quantile", type=float, default=99.5)
+    p.add_argument("--max-train-batches", type=int, default=None, help="Optional debug/smoke mode limit.")
+    p.add_argument("--calibrate-quantile", type=float, default=99.5, help="Training-score quantile for calibrated thresholds.")
     p.add_argument("--calibrate-max-batches", type=int, default=None)
 
     p.add_argument("--output-model", type=str, default="artifacts/patchcore_carpet.pt")
@@ -166,3 +168,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

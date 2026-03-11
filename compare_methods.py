@@ -47,6 +47,8 @@ def build_row(name: str, model_path: str, train_report_path: str, metrics_path: 
         "name": name,
         "method": report.get("method", metrics.get("method_used", "unknown")),
         "backbone": report.get("backbone", "unknown"),
+        "threshold_mode": metrics.get("threshold_mode_requested", "unknown"),
+        "oracle_thresholds": bool(metrics.get("uses_test_score_oracle_thresholds", False)),
         "train_time_sec": estimate_runtime_sec(report),
         "prediction_time_sec": float(metrics.get("prediction_time_sec", 0.0) or 0.0),
         "eval_time_sec": float(metrics.get("evaluation_time_sec", 0.0) or 0.0),
@@ -67,6 +69,8 @@ def format_table(rows: list[dict]) -> str:
         "name",
         "method",
         "backbone",
+        "thr_mode",
+        "oracle_thr",
         "img_auc",
         "pix_auc",
         "pix_prec",
@@ -75,7 +79,6 @@ def format_table(rows: list[dict]) -> str:
         "train_s",
         "pred_s",
         "tensor_mb",
-        "file_mb",
     ]
 
     lines = []
@@ -89,6 +92,8 @@ def format_table(rows: list[dict]) -> str:
                     str(r["name"]),
                     str(r["method"]),
                     str(r["backbone"]),
+                    str(r["threshold_mode"]),
+                    str(r["oracle_thresholds"]),
                     f"{r['image_roc_auc']:.4f}",
                     f"{r['pixel_roc_auc']:.4f}",
                     f"{r['pixel_precision']:.4f}",
@@ -97,7 +102,6 @@ def format_table(rows: list[dict]) -> str:
                     f"{r['train_time_sec']:.2f}",
                     f"{r['prediction_time_sec']:.2f}",
                     f"{r['model_tensor_mem_mb']:.2f}",
-                    f"{r['model_file_mb']:.2f}",
                 ]
             )
         )
@@ -106,7 +110,9 @@ def format_table(rows: list[dict]) -> str:
 
 
 def parse_args():
-    p = argparse.ArgumentParser()
+    p = argparse.ArgumentParser(
+        description="Compare PatchCore and PaDiM metrics/runtimes/memory from already-generated reports."
+    )
     p.add_argument("--patchcore-model", type=str, required=True)
     p.add_argument("--patchcore-train-report", type=str, required=True)
     p.add_argument("--patchcore-metrics", type=str, required=True)

@@ -1,0 +1,40 @@
+[
+  {
+    "name": "patchcore",
+    "method": "patchcore",
+    "backbone": "resnet18",
+    "threshold_mode": "best",
+    "oracle_thresholds": true,
+    "train_time_sec": 114.12651300430298,
+    "prediction_time_sec": 7.951688051223755,
+    "eval_time_sec": 15.636463403701782,
+    "image_roc_auc": 0.9943820224719102,
+    "pixel_roc_auc": 0.9899043901809635,
+    "image_f1": 0.9832402234636871,
+    "pixel_precision": 0.551708345211446,
+    "pixel_recall": 0.7593459747343505,
+    "pixel_f1": 0.6390849025705988,
+    "model_tensor_mem_mb": 6.0,
+    "model_file_mb": 6.001911163330078,
+    "model_path": "C:\\Users\\PC\\Documents\\UPM-carpet\\artifacts\\pc_I.pt"
+  },
+  {
+    "name": "padim",
+    "method": "padim",
+    "backbone": "resnet18",
+    "threshold_mode": "best",
+    "oracle_thresholds": true,
+    "train_time_sec": 47.85490083694458,
+    "prediction_time_sec": 5.606398105621338,
+    "eval_time_sec": 11.836194276809692,
+    "image_roc_auc": 0.9791332263242376,
+    "pixel_roc_auc": 0.9866392655841735,
+    "image_f1": 0.9659090909090909,
+    "pixel_precision": 0.5096455023463561,
+    "pixel_recall": 0.7339994137189759,
+    "pixel_f1": 0.6015857019867992,
+    "model_tensor_mem_mb": 39.453125,
+    "model_file_mb": 39.45838737487793,
+    "model_path": "C:\\Users\\PC\\Documents\\UPM-carpet\\artifacts\\padim_carpet.pt"
+  }
+]

@@ -83,24 +83,42 @@ def save_viz(img_path, gt_mask, an_map, pred_mask, out_path):
 
 
 def parse_args():
-    p = argparse.ArgumentParser()
-    p.add_argument("--method", type=str, default="auto", choices=["auto", "patchcore", "padim"])
+    p = argparse.ArgumentParser(
+        description=(
+            "Evaluate PatchCore/PaDiM on MVTec carpet. "
+            "Use --threshold-mode calibrated for deployment-fair operating points. "
+            "Use --threshold-mode best only as oracle upper-bound analysis."
+        )
+    )
+    p.add_argument("--method", type=str, default="auto", choices=["auto", "patchcore", "padim"], help="Model family to load. auto = detect from checkpoint.")
 
-    p.add_argument("--carpet-root", type=str, required=True)
-    p.add_argument("--model-path", type=str, required=True)
+    p.add_argument("--carpet-root", type=str, required=True, help="Path to MVTec carpet root folder.")
+    p.add_argument("--model-path", type=str, required=True, help="Path to saved model checkpoint.")
     p.add_argument("--image-size", type=int, default=None, help="Defaults to model train size if available.")
     p.add_argument("--batch-size", type=int, default=8)
     p.add_argument("--num-workers", type=int, default=0)
     p.add_argument("--device", type=str, default="cpu")
 
-    p.add_argument("--threshold-mode", type=str, default="calibrated", choices=["calibrated", "best"])
-    p.add_argument("--image-threshold", type=float, default=None)
-    p.add_argument("--pixel-threshold", type=float, default=None)
+    p.add_argument(
+        "--threshold-mode",
+        type=str,
+        default="calibrated",
+        choices=["calibrated", "best"],
+        help="calibrated = thresholds from training calibration; best = oracle threshold from test score distribution.",
+    )
+    p.add_argument("--image-threshold", type=float, default=None, help="Manual image-level threshold override.")
+    p.add_argument("--pixel-threshold", type=float, default=None, help="Manual pixel-level threshold override.")
 
-    p.add_argument("--min-region-area", type=int, default=0)
+    p.add_argument("--min-region-area", type=int, default=0, help="Connected-component area filtering after pixel thresholding.")
 
     p.add_argument("--output-dir", type=str, default="outputs/eval")
-    p.add_argument("--visualize-top-k", type=int, default=20)
+    p.add_argument("--visualize-top-k", type=int, default=20, help="Save top-K highest image-score visualizations.")
+    p.add_argument(
+        "--visualize-failures-k",
+        type=int,
+        default=0,
+        help="Save up to K false positives and K false negatives as separate visual panels.",
+    )
     return p.parse_args()
 
 
@@ -135,7 +153,7 @@ def main():
     labels = labels.astype(np.int64)
     masks_bin = (masks > 0.5).astype(np.uint8)
 
-    # Best thresholds (for analysis)
+    # Best thresholds (oracle analysis)
     image_best_f1, image_best_thr = best_f1_threshold(labels, image_scores)
     pix_gt = masks_bin.reshape(-1)
     pix_score = anomaly_maps.reshape(-1)
@@ -162,6 +180,10 @@ def main():
         pixel_thr = float(pixel_best_thr)
         pixel_thr_source = "best"
 
+    uses_test_score_oracle_thresholds = bool(
+        (image_thr_source == "best") or (pixel_thr_source == "best")
+    )
+
     pred_labels = (image_scores >= image_thr).astype(np.int64)
 
     pred_masks = (anomaly_maps >= pixel_thr).astype(np.uint8)
@@ -177,11 +199,16 @@ def main():
     pixel_auc = safe_auc(pix_gt, pix_score)
     pixel_ap = float(average_precision_score(pix_gt, pix_score))
 
+    fp_idx = np.where((labels == 0) & (pred_labels == 1))[0]
+    fn_idx = np.where((labels == 1) & (pred_labels == 0))[0]
+
     metrics = {
         "method_requested": args.method,
         "method_used": used_method,
         "num_test_images": int(len(labels)),
         "num_anomalous_images": int(labels.sum()),
+        "num_false_positives": int(fp_idx.size),
+        "num_false_negatives": int(fn_idx.size),
         "image_roc_auc": image_auc,
         "image_average_precision": image_ap,
         "image_best_f1": image_best_f1,
@@ -195,6 +222,7 @@ def main():
         "image_threshold_source": image_thr_source,
         "pixel_threshold_used": float(pixel_thr),
         "pixel_threshold_source": pixel_thr_source,
+        "uses_test_score_oracle_thresholds": uses_test_score_oracle_thresholds,
         "image_precision_at_used": float(precision_score(labels, pred_labels, zero_division=0)),
         "image_recall_at_used": float(recall_score(labels, pred_labels, zero_division=0)),
         "image_f1_at_used": float(f1_score(labels, pred_labels, zero_division=0)),
@@ -234,6 +262,24 @@ def main():
     for rank, i in enumerate(top_idx, start=1):
         name = f"{rank:02d}_{Path(paths[i]).stem}_score_{image_scores[i]:.4f}.png"
         save_viz(paths[i], masks[i], anomaly_maps[i], pred_masks[i], viz_dir / name)
+
+    if args.visualize_failures_k > 0:
+        fail_dir = out_dir / "visualizations_failures"
+
+        if fp_idx.size > 0:
+            fp_sorted = fp_idx[np.argsort(-image_scores[fp_idx])]
+            for rank, i in enumerate(fp_sorted[: args.visualize_failures_k], start=1):
+                name = f"FP_{rank:02d}_{Path(paths[i]).stem}_score_{image_scores[i]:.4f}.png"
+                save_viz(paths[i], masks[i], anomaly_maps[i], pred_masks[i], fail_dir / name)
+
+        if fn_idx.size > 0:
+            fn_sorted = fn_idx[np.argsort(image_scores[fn_idx])]
+            for rank, i in enumerate(fn_sorted[: args.visualize_failures_k], start=1):
+                name = f"FN_{rank:02d}_{Path(paths[i]).stem}_score_{image_scores[i]:.4f}.png"
+                save_viz(paths[i], masks[i], anomaly_maps[i], pred_masks[i], fail_dir / name)
+
+    if uses_test_score_oracle_thresholds:
+        print("warning=oracle_thresholding_used(best mode or fallback to best threshold)")
 
     print(json.dumps(metrics, indent=2))
     print(f"saved_dir={out_dir.resolve()}")
