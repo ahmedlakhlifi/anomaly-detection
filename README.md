@@ -1,9 +1,5 @@
 ﻿# Project overview
-Unsupervised anomaly detection and localization on **MVTec AD (carpet)** using two methods implemented in this repo:
-- **PatchCore** (selected final method)
-- **PaDiM** (baseline)
-
-Goal: turn the assignment into a reproducible, honest, deployment-aware comparison.
+After researching anomaly detection methods for textured surfaces, I decided to implement two approaches: **PatchCore**, which I chose for its strong detection accuracy, and **PaDiM** as a lighter baseline to compare against.
 
 # Task definition
 Given only defect-free training images:
@@ -73,9 +69,9 @@ Source: `results/metrics/comparison_fair.csv`
 | PatchCore | calibrated | False | 0.9944 | 0.9899 | 0.9778 | 0.2267 | 0.9783 | 0.3681 | 114.13 | 10.26 | 6.00 |
 | PaDiM | calibrated | False | 0.9791 | 0.9866 | 0.9297 | 0.2138 | 0.9630 | 0.3499 | 47.85 | 5.66 | 39.45 |
 
-Main takeaway (fair setting):
+Main takeaway :
 - PatchCore has better AUROC and image-level F1.
-- PaDiM is faster but much heavier in memory.
+- PaDiM is faster but much heavier in memory (i was suprised at first ).
 - Calibrated thresholds prioritize recall, so pixel precision/F1 are lower than oracle mode.
 
 # Fair evaluation protocol
