@@ -70,8 +70,10 @@ def main():
         image_thr = float(model.image_threshold)
         image_thr_source = "calibrated"
     else:
-        image_thr = 0.6435
-        image_thr_source = "fallback"
+        raise ValueError(
+            "No image threshold found in checkpoint. "
+            "Pass --threshold or retrain with --calibrate-quantile."
+        )
 
     if args.pixel_threshold is not None:
         pixel_thr = float(args.pixel_threshold)
@@ -124,3 +126,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
