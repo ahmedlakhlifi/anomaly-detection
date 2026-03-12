@@ -5,8 +5,20 @@ from collections import Counter
 from pathlib import Path
 
 
+def sanitize_output_path(p: str) -> str:
+    s = str(p).replace("\\", "/")
+    lower = s.lower()
+    idx = lower.find("/test/")
+    if idx >= 0:
+        return s[idx + 1 :]
+    idx2 = lower.find("test/")
+    if idx2 >= 0:
+        return s[idx2:]
+    return Path(s).name
+
+
 def defect_type_from_path(p: str) -> str:
-    path = Path(p)
+    path = Path(str(p).replace("\\", "/"))
     # .../test/<defect_type>/<file>.png
     parts = [x.lower() for x in path.parts]
     if "test" in parts:
@@ -49,14 +61,14 @@ def main():
         "false_positive_by_defect": dict(fp_defects),
         "lowest_score_false_negatives": [
             {
-                "path": x.get("path"),
+                "path": sanitize_output_path(x.get("path", "")),
                 "score": float(x.get("score", 0.0)),
             }
             for x in fn_sorted[:10]
         ],
         "highest_score_false_positives": [
             {
-                "path": x.get("path"),
+                "path": sanitize_output_path(x.get("path", "")),
                 "score": float(x.get("score", 0.0)),
             }
             for x in fp_sorted[:10]

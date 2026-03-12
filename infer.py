@@ -36,6 +36,11 @@ def parse_args():
     p.add_argument("--device", type=str, default="cpu")
     p.add_argument("--threshold", type=float, default=None, help="Optional image-level threshold override.")
     p.add_argument("--pixel-threshold", type=float, default=None, help="Optional pixel-level threshold override.")
+    p.add_argument(
+        "--allow-percentile-fallback",
+        action="store_true",
+        help="Allow per-image 99th percentile fallback for pixel threshold when checkpoint/manual threshold is missing.",
+    )
     p.add_argument("--output-dir", type=str, default="outputs/infer")
     return p.parse_args()
 
@@ -81,9 +86,15 @@ def main():
     elif model.pixel_threshold is not None:
         pixel_thr = float(model.pixel_threshold)
         pixel_thr_source = "calibrated"
-    else:
+    elif args.allow_percentile_fallback:
         pixel_thr = float(np.percentile(an_map, 99.0))
-        pixel_thr_source = "fallback_percentile"
+        pixel_thr_source = "fallback_percentile_opt_in"
+    else:
+        raise ValueError(
+            "No pixel threshold found in checkpoint. "
+            "Pass --pixel-threshold, retrain with --calibrate-quantile, "
+            "or set --allow-percentile-fallback to opt in."
+        )
 
     pred_label = int(score >= image_thr)
     pred_mask = (an_map >= pixel_thr).astype(np.uint8)
@@ -114,6 +125,7 @@ def main():
         "image_threshold_source": image_thr_source,
         "pixel_threshold": pixel_thr,
         "pixel_threshold_source": pixel_thr_source,
+        "allow_percentile_fallback": bool(args.allow_percentile_fallback),
         "pred_label": pred_label,
     }
 
@@ -126,4 +138,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

@@ -163,7 +163,13 @@ def main():
     if args.image_threshold is not None:
         image_thr = float(args.image_threshold)
         image_thr_source = "manual"
-    elif args.threshold_mode == "calibrated" and model.image_threshold is not None:
+    elif args.threshold_mode == "calibrated":
+        if model.image_threshold is None:
+            raise ValueError(
+                "threshold-mode=calibrated requires a calibrated image threshold in checkpoint "
+                "or --image-threshold override. Retrain with --calibrate-quantile or pass "
+                "--image-threshold."
+            )
         image_thr = float(model.image_threshold)
         image_thr_source = "calibrated"
     else:
@@ -173,7 +179,13 @@ def main():
     if args.pixel_threshold is not None:
         pixel_thr = float(args.pixel_threshold)
         pixel_thr_source = "manual"
-    elif args.threshold_mode == "calibrated" and model.pixel_threshold is not None:
+    elif args.threshold_mode == "calibrated":
+        if model.pixel_threshold is None:
+            raise ValueError(
+                "threshold-mode=calibrated requires a calibrated pixel threshold in checkpoint "
+                "or --pixel-threshold override. Retrain with --calibrate-quantile or pass "
+                "--pixel-threshold."
+            )
         pixel_thr = float(model.pixel_threshold)
         pixel_thr_source = "calibrated"
     else:
@@ -279,7 +291,7 @@ def main():
                 save_viz(paths[i], masks[i], anomaly_maps[i], pred_masks[i], fail_dir / name)
 
     if uses_test_score_oracle_thresholds:
-        print("warning=oracle_thresholding_used(best mode or fallback to best threshold)")
+        print("warning=oracle_thresholding_used(best mode)")
 
     print(json.dumps(metrics, indent=2))
     print(f"saved_dir={out_dir.resolve()}")
@@ -287,3 +299,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

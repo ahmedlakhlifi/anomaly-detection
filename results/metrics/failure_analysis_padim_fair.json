@@ -12,57 +12,57 @@
   },
   "lowest_score_false_negatives": [
     {
-      "path": "C:\\Users\\PC\\Desktop\\carpet\\test\\metal_contamination\\000.png",
+      "path": "test/metal_contamination/000.png",
       "score": 7.775835037231445
     },
     {
-      "path": "C:\\Users\\PC\\Desktop\\carpet\\test\\color\\006.png",
+      "path": "test/color/006.png",
       "score": 7.957052707672119
     },
     {
-      "path": "C:\\Users\\PC\\Desktop\\carpet\\test\\thread\\018.png",
+      "path": "test/thread/018.png",
       "score": 7.970344543457031
     }
   ],
   "highest_score_false_positives": [
     {
-      "path": "C:\\Users\\PC\\Desktop\\carpet\\test\\good\\022.png",
+      "path": "test/good/022.png",
       "score": 9.614266395568848
     },
     {
-      "path": "C:\\Users\\PC\\Desktop\\carpet\\test\\good\\006.png",
+      "path": "test/good/006.png",
       "score": 8.811744689941406
     },
     {
-      "path": "C:\\Users\\PC\\Desktop\\carpet\\test\\good\\012.png",
+      "path": "test/good/012.png",
       "score": 8.688837051391602
     },
     {
-      "path": "C:\\Users\\PC\\Desktop\\carpet\\test\\good\\023.png",
+      "path": "test/good/023.png",
       "score": 8.545217514038086
     },
     {
-      "path": "C:\\Users\\PC\\Desktop\\carpet\\test\\good\\014.png",
+      "path": "test/good/014.png",
       "score": 8.483964920043945
     },
     {
-      "path": "C:\\Users\\PC\\Desktop\\carpet\\test\\good\\003.png",
+      "path": "test/good/003.png",
       "score": 8.436494827270508
     },
     {
-      "path": "C:\\Users\\PC\\Desktop\\carpet\\test\\good\\019.png",
+      "path": "test/good/019.png",
       "score": 8.40866756439209
     },
     {
-      "path": "C:\\Users\\PC\\Desktop\\carpet\\test\\good\\020.png",
+      "path": "test/good/020.png",
       "score": 8.300370216369629
     },
     {
-      "path": "C:\\Users\\PC\\Desktop\\carpet\\test\\good\\008.png",
+      "path": "test/good/008.png",
       "score": 8.280325889587402
     },
     {
-      "path": "C:\\Users\\PC\\Desktop\\carpet\\test\\good\\007.png",
+      "path": "test/good/007.png",
       "score": 8.26540756225586
     }
   ]

@@ -25,6 +25,27 @@ Dataset split used in this repo:
 - `results/examples/` curated qualitative examples
 - `results/metrics/` curated fair/oracle metrics and analyses
 
+# Quickstart
+```powershell
+& ".\.venv\Scripts\python.exe" -m pip install -r .\requirements.txt
+$env:CARPET_ROOT = ".\data\carpet"
+
+# Train
+& ".\.venv\Scripts\python.exe" .\train.py --method patchcore --carpet-root "$env:CARPET_ROOT" --device cpu --backbone resnet18 --image-size 288 --batch-size 4 --coreset-method kcenter --coreset-ratio 0.2 --coreset-max-candidates 40000 --coreset-max-selected 4096 --coreset-proj-dim 256 --knn-k 1 --map-smooth-kernel 1 --score-topk-ratio 0.005 --calibrate-quantile 99.5 --output-model .\artifacts\pc_I.pt
+& ".\.venv\Scripts\python.exe" .\train.py --method padim --carpet-root "$env:CARPET_ROOT" --device cpu --backbone resnet18 --image-size 256 --batch-size 8 --padim-embedding-dim 100 --padim-cov-eps 0.01 --map-smooth-kernel 1 --score-topk-ratio 0.01 --calibrate-quantile 99.5 --output-model .\artifacts\padim_carpet.pt
+
+# Fair eval (calibrated thresholds only)
+& ".\.venv\Scripts\python.exe" .\evaluate.py --method auto --carpet-root "$env:CARPET_ROOT" --model-path .\artifacts\pc_I.pt --device cpu --output-dir .\outputs\eval_patchcore_fair_cal --threshold-mode calibrated --min-region-area 0 --visualize-top-k 8 --visualize-failures-k 2
+& ".\.venv\Scripts\python.exe" .\evaluate.py --method auto --carpet-root "$env:CARPET_ROOT" --model-path .\artifacts\padim_carpet.pt --device cpu --output-dir .\outputs\eval_padim_fair_cal --threshold-mode calibrated --min-region-area 0 --visualize-top-k 8 --visualize-failures-k 2
+
+# Oracle eval (upper bound)
+& ".\.venv\Scripts\python.exe" .\evaluate.py --method auto --carpet-root "$env:CARPET_ROOT" --model-path .\artifacts\pc_I.pt --device cpu --output-dir .\outputs\eval_patchcore_oracle_best --threshold-mode best --min-region-area 0 --visualize-top-k 0
+& ".\.venv\Scripts\python.exe" .\evaluate.py --method auto --carpet-root "$env:CARPET_ROOT" --model-path .\artifacts\padim_carpet.pt --device cpu --output-dir .\outputs\eval_padim_oracle_best --threshold-mode best --min-region-area 0 --visualize-top-k 0
+
+# Compare
+& ".\.venv\Scripts\python.exe" .\compare_methods.py --patchcore-model .\artifacts\pc_I.pt --patchcore-train-report .\artifacts\pc_I.train_report.json --patchcore-metrics .\outputs\eval_patchcore_fair_cal\metrics.json --padim-model .\artifacts\padim_carpet.pt --padim-train-report .\artifacts\padim_carpet.train_report.json --padim-metrics .\outputs\eval_padim_fair_cal\metrics.json --output-csv .\results\metrics\comparison_fair.csv --output-json .\results\metrics\comparison_fair.json
+& ".\.venv\Scripts\python.exe" .\compare_methods.py --patchcore-model .\artifacts\pc_I.pt --patchcore-train-report .\artifacts\pc_I.train_report.json --patchcore-metrics .\outputs\eval_patchcore_oracle_best\metrics.json --padim-model .\artifacts\padim_carpet.pt --padim-train-report .\artifacts\padim_carpet.train_report.json --padim-metrics .\outputs\eval_padim_oracle_best\metrics.json --output-csv .\results\metrics\comparison_oracle.csv --output-json .\results\metrics\comparison_oracle.json
+```
 # Methods
 ## PatchCore
 - Multi-scale embedding from pretrained ResNet (`layer2` + upsampled `layer3`)
@@ -73,6 +94,10 @@ Main takeaway :
 - PatchCore has better AUROC and image-level F1.
 - PaDiM is faster but much heavier in memory (i was suprised at first ).
 - Calibrated thresholds prioritize recall, so pixel precision/F1 are lower than oracle mode.
+
+Fair-vs-oracle warning:
+- `--threshold-mode calibrated` is the main non-leaky setting. It now fails fast if calibrated thresholds are missing (unless you pass manual overrides).
+- `--threshold-mode best` uses test-score-derived thresholds and is reported only as oracle upper bound.
 
 # Fair evaluation protocol
 Main table is intentionally **non-leaky**:
@@ -158,9 +183,14 @@ All dependencies are version-pinned in `requirements.txt`.
 $env:CARPET_ROOT = ".\data\carpet"
 ```
 
-## Train
-```powershell\n## Train PatchCore\n& ".\.venv\Scripts\python.exe" .\train.py --method patchcore --carpet-root "$env:CARPET_ROOT" --device cpu --backbone resnet18 --image-size 288 --batch-size 4 --coreset-method kcenter --coreset-ratio 0.2 --coreset-max-candidates 40000 --coreset-max-selected 4096 --coreset-proj-dim 256 --knn-k 1 --map-smooth-kernel 1 --score-topk-ratio 0.005 --calibrate-quantile 99.5 --output-model .\artifacts\pc_I.pt
-\n## Train PaDiM\n& ".\.venv\Scripts\python.exe" .\train.py --method padim --carpet-root "$env:CARPET_ROOT" --device cpu --backbone resnet18 --image-size 256 --batch-size 8 --padim-embedding-dim 100 --padim-cov-eps 0.01 --map-smooth-kernel 1 --score-topk-ratio 0.01 --calibrate-quantile 99.5 --output-model .\artifacts\padim_carpet.pt
+## Train PatchCore
+```powershell
+& ".\.venv\Scripts\python.exe" .\train.py --method patchcore --carpet-root "$env:CARPET_ROOT" --device cpu --backbone resnet18 --image-size 288 --batch-size 4 --coreset-method kcenter --coreset-ratio 0.2 --coreset-max-candidates 40000 --coreset-max-selected 4096 --coreset-proj-dim 256 --knn-k 1 --map-smooth-kernel 1 --score-topk-ratio 0.005 --calibrate-quantile 99.5 --output-model .\artifacts\pc_I.pt
+```
+
+## Train PaDiM
+```powershell
+& ".\.venv\Scripts\python.exe" .\train.py --method padim --carpet-root "$env:CARPET_ROOT" --device cpu --backbone resnet18 --image-size 256 --batch-size 8 --padim-embedding-dim 100 --padim-cov-eps 0.01 --map-smooth-kernel 1 --score-topk-ratio 0.01 --calibrate-quantile 99.5 --output-model .\artifacts\padim_carpet.pt
 ```
 
 ## Evaluate (fair calibrated)
@@ -177,11 +207,15 @@ $env:CARPET_ROOT = ".\data\carpet"
 & ".\.venv\Scripts\python.exe" .\evaluate.py --method auto --carpet-root "$env:CARPET_ROOT" --model-path .\artifacts\padim_carpet.pt --device cpu --output-dir .\outputs\eval_padim_oracle_best --threshold-mode best --min-region-area 0 --visualize-top-k 0
 ```
 
-## Compare methods
-```powershell\n## Compare (Fair)\n& ".\.venv\Scripts\python.exe" .\compare_methods.py --patchcore-model .\artifacts\pc_I.pt --patchcore-train-report .\artifacts\pc_I.train_report.json --patchcore-metrics .\outputs\eval_patchcore_fair_cal\metrics.json --padim-model .\artifacts\padim_carpet.pt --padim-train-report .\artifacts\padim_carpet.train_report.json --padim-metrics .\outputs\eval_padim_fair_cal\metrics.json --output-csv .\results\metrics\comparison_fair.csv --output-json .\results\metrics\comparison_fair.json
-\n## Compare (Oracle)\n& ".\.venv\Scripts\python.exe" .\compare_methods.py --patchcore-model .\artifacts\pc_I.pt --patchcore-train-report .\artifacts\pc_I.train_report.json --patchcore-metrics .\outputs\eval_patchcore_oracle_best\metrics.json --padim-model .\artifacts\padim_carpet.pt --padim-train-report .\artifacts\padim_carpet.train_report.json --padim-metrics .\outputs\eval_padim_oracle_best\metrics.json --output-csv .\results\metrics\comparison_oracle.csv --output-json .\results\metrics\comparison_oracle.json
+## Compare methods (fair)
+```powershell
+& ".\.venv\Scripts\python.exe" .\compare_methods.py --patchcore-model .\artifacts\pc_I.pt --patchcore-train-report .\artifacts\pc_I.train_report.json --patchcore-metrics .\outputs\eval_patchcore_fair_cal\metrics.json --padim-model .\artifacts\padim_carpet.pt --padim-train-report .\artifacts\padim_carpet.train_report.json --padim-metrics .\outputs\eval_padim_fair_cal\metrics.json --output-csv .\results\metrics\comparison_fair.csv --output-json .\results\metrics\comparison_fair.json
 ```
 
+## Compare methods (oracle)
+```powershell
+& ".\.venv\Scripts\python.exe" .\compare_methods.py --patchcore-model .\artifacts\pc_I.pt --patchcore-train-report .\artifacts\pc_I.train_report.json --patchcore-metrics .\outputs\eval_patchcore_oracle_best\metrics.json --padim-model .\artifacts\padim_carpet.pt --padim-train-report .\artifacts\padim_carpet.train_report.json --padim-metrics .\outputs\eval_padim_oracle_best\metrics.json --output-csv .\results\metrics\comparison_oracle.csv --output-json .\results\metrics\comparison_oracle.json
+```
 
 ## Failure analysis
 ```powershell

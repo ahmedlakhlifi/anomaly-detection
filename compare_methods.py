@@ -1,6 +1,7 @@
 ﻿import argparse
 import csv
 import json
+import math
 from pathlib import Path
 
 import torch
@@ -10,13 +11,62 @@ def mb(x_bytes: float) -> float:
     return float(x_bytes) / (1024.0 * 1024.0)
 
 
+def read_json_object(path: Path, label: str) -> dict:
+    if not path.exists():
+        raise ValueError(f"Missing {label}: {path}")
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Invalid JSON in {label} ({path}): {e}") from e
+    if not isinstance(data, dict):
+        raise ValueError(f"Expected JSON object in {label} ({path}), got {type(data).__name__}")
+    return data
+
+
+def require_key(d: dict, key: str, label: str):
+    if key not in d:
+        raise ValueError(f"Missing required key '{key}' in {label}")
+    return d[key]
+
+
+def require_str(d: dict, key: str, label: str) -> str:
+    v = require_key(d, key, label)
+    if not isinstance(v, str) or not v.strip():
+        raise ValueError(f"Invalid '{key}' in {label}: expected non-empty string")
+    return v
+
+
+def require_bool(d: dict, key: str, label: str) -> bool:
+    v = require_key(d, key, label)
+    if not isinstance(v, bool):
+        raise ValueError(f"Invalid '{key}' in {label}: expected boolean")
+    return v
+
+
+def require_float(d: dict, key: str, label: str, allow_nan: bool = False) -> float:
+    raw = require_key(d, key, label)
+    try:
+        v = float(raw)
+    except (TypeError, ValueError) as e:
+        raise ValueError(f"Invalid '{key}' in {label}: expected numeric, got {raw!r}") from e
+
+    if math.isinf(v):
+        raise ValueError(f"Invalid '{key}' in {label}: infinite values are not allowed")
+    if not allow_nan and math.isnan(v):
+        raise ValueError(f"Invalid '{key}' in {label}: NaN is not allowed")
+    return v
+
+
 def estimate_runtime_sec(report: dict) -> float:
-    fit = float(report.get("fit_time_sec", 0.0) or 0.0)
-    cal = float(report.get("calibration_time_sec", 0.0) or 0.0)
+    fit = require_float(report, "fit_time_sec", "train report")
+    cal = require_float(report, "calibration_time_sec", "train report")
     return fit + cal
 
 
 def estimate_model_memory_mb(model_path: Path) -> tuple[float, float]:
+    if not model_path.exists():
+        raise ValueError(f"Missing model checkpoint: {model_path}")
+
     ckpt = torch.load(model_path, map_location="cpu")
 
     tensor_bytes = 0
@@ -33,34 +83,64 @@ def estimate_model_memory_mb(model_path: Path) -> tuple[float, float]:
     return mb(tensor_bytes), mb(file_bytes)
 
 
+def normalize_model_path(path: Path) -> str:
+    parts = list(path.parts)
+    for i, part in enumerate(parts):
+        if part.lower() == "artifacts":
+            return "/".join(parts[i:])
+    return path.name
+
+
 def build_row(name: str, model_path: str, train_report_path: str, metrics_path: str) -> dict:
     model_p = Path(model_path)
     report_p = Path(train_report_path)
     metrics_p = Path(metrics_path)
 
-    report = json.loads(report_p.read_text(encoding="utf-8"))
-    metrics = json.loads(metrics_p.read_text(encoding="utf-8"))
+    report = read_json_object(report_p, "train report")
+    metrics = read_json_object(metrics_p, "metrics")
+
+    raw_method = report.get("method", metrics.get("method_used"))
+    if not isinstance(raw_method, str) or not raw_method.strip():
+        raise ValueError(
+            "Missing required method information: expected train report key 'method' "
+            "or metrics key 'method_used'"
+        )
+    method = raw_method
+    backbone = require_str(report, "backbone", "train report")
+
+    threshold_mode = require_str(metrics, "threshold_mode_requested", "metrics")
+    oracle_thresholds = require_bool(metrics, "uses_test_score_oracle_thresholds", "metrics")
+
+    prediction_time_sec = require_float(metrics, "prediction_time_sec", "metrics")
+    eval_time_sec = require_float(metrics, "evaluation_time_sec", "metrics")
+
+    image_roc_auc = require_float(metrics, "image_roc_auc", "metrics")
+    pixel_roc_auc = require_float(metrics, "pixel_roc_auc", "metrics")
+    image_f1 = require_float(metrics, "image_f1_at_used", "metrics")
+    pixel_precision = require_float(metrics, "pixel_precision_at_used", "metrics")
+    pixel_recall = require_float(metrics, "pixel_recall_at_used", "metrics")
+    pixel_f1 = require_float(metrics, "pixel_f1_at_used", "metrics")
 
     tensor_mem_mb, file_mem_mb = estimate_model_memory_mb(model_p)
 
     return {
         "name": name,
-        "method": report.get("method", metrics.get("method_used", "unknown")),
-        "backbone": report.get("backbone", "unknown"),
-        "threshold_mode": metrics.get("threshold_mode_requested", "unknown"),
-        "oracle_thresholds": bool(metrics.get("uses_test_score_oracle_thresholds", False)),
+        "method": method,
+        "backbone": backbone,
+        "threshold_mode": threshold_mode,
+        "oracle_thresholds": oracle_thresholds,
         "train_time_sec": estimate_runtime_sec(report),
-        "prediction_time_sec": float(metrics.get("prediction_time_sec", 0.0) or 0.0),
-        "eval_time_sec": float(metrics.get("evaluation_time_sec", 0.0) or 0.0),
-        "image_roc_auc": float(metrics.get("image_roc_auc", 0.0) or 0.0),
-        "pixel_roc_auc": float(metrics.get("pixel_roc_auc", 0.0) or 0.0),
-        "image_f1": float(metrics.get("image_f1_at_used", 0.0) or 0.0),
-        "pixel_precision": float(metrics.get("pixel_precision_at_used", 0.0) or 0.0),
-        "pixel_recall": float(metrics.get("pixel_recall_at_used", 0.0) or 0.0),
-        "pixel_f1": float(metrics.get("pixel_f1_at_used", 0.0) or 0.0),
+        "prediction_time_sec": prediction_time_sec,
+        "eval_time_sec": eval_time_sec,
+        "image_roc_auc": image_roc_auc,
+        "pixel_roc_auc": pixel_roc_auc,
+        "image_f1": image_f1,
+        "pixel_precision": pixel_precision,
+        "pixel_recall": pixel_recall,
+        "pixel_f1": pixel_f1,
         "model_tensor_mem_mb": tensor_mem_mb,
         "model_file_mb": file_mem_mb,
-        "model_path": str(model_p.resolve()),
+        "model_path": normalize_model_path(model_p),
     }
 
 
@@ -162,3 +242,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
